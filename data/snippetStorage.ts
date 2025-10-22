@@ -1,10 +1,10 @@
-import { DevSnippet } from './devSnippets';
+import { DevSnippet } from "./devSnippets";
 
-const STORAGE_KEY = 'grebbary-snippets';
+const STORAGE_KEY = "grebbary-snippets";
 
 // Get snippets from localStorage, fallback to default data
 export const getSnippetsFromStorage = (): DevSnippet[] => {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     // Server-side rendering fallback
     return [];
   }
@@ -15,22 +15,59 @@ export const getSnippetsFromStorage = (): DevSnippet[] => {
       return JSON.parse(stored);
     }
   } catch (error) {
-    console.error('Error loading snippets from localStorage:', error);
+    console.error("Error loading snippets from localStorage:", error);
   }
-  
+
   return [];
 };
 
 // Save snippets to localStorage
 export const saveSnippetsToStorage = (snippets: DevSnippet[]): void => {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return; // Skip on server-side
   }
 
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(snippets));
+    // Create a copy of snippets without large image data for storage
+    const snippetsForStorage = snippets.map((snippet) => ({
+      ...snippet,
+      // Only convert base64 data URLs to placeholders, keep original asset paths
+      image: snippet.image.startsWith("data:")
+        ? "/assets/img_nav_bar.png" // Use an existing image as placeholder
+        : snippet.image,
+    }));
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snippetsForStorage));
+
+    // Store image previews separately to avoid quota issues
+    const imagePreviews: { [key: string]: string } = {};
+    snippets.forEach((snippet) => {
+      if (snippet.image.startsWith("data:")) {
+        imagePreviews[snippet.id] = snippet.image;
+      }
+    });
+
+    if (Object.keys(imagePreviews).length > 0) {
+      localStorage.setItem(
+        `${STORAGE_KEY}-previews`,
+        JSON.stringify(imagePreviews)
+      );
+    }
   } catch (error) {
-    console.error('Error saving snippets to localStorage:', error);
+    console.error("Error saving snippets to localStorage:", error);
+    // If still failing, try to clear some space and retry
+    try {
+      // Clear old data and try again with smaller payload
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(`${STORAGE_KEY}-previews`);
+      const snippetsForStorage = snippets.map((snippet) => ({
+        ...snippet,
+        image: "/assets/img_nav_bar.png", // Force placeholder for all images
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snippetsForStorage));
+    } catch (retryError) {
+      console.error("Failed to save even with reduced data:", retryError);
+    }
   }
 };
 
@@ -42,23 +79,51 @@ export const addSnippetToStorage = (snippet: DevSnippet): DevSnippet[] => {
   return updatedSnippets;
 };
 
+// Get image previews from localStorage
+export const getImagePreviews = (): { [key: string]: string } => {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const stored = localStorage.getItem(`${STORAGE_KEY}-previews`);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error("Error loading image previews from localStorage:", error);
+  }
+
+  return {};
+};
+
 // Get all snippets (from localStorage + default data)
 export const getAllSnippets = (defaultSnippets: DevSnippet[]): DevSnippet[] => {
   const storedSnippets = getSnippetsFromStorage();
-  
+  const imagePreviews = getImagePreviews();
+
   // If no stored snippets, initialize with default data
   if (storedSnippets.length === 0) {
     saveSnippetsToStorage(defaultSnippets);
     return defaultSnippets;
   }
-  
-  return storedSnippets;
+
+  // Restore image previews for snippets that have them, but keep original paths for others
+  const snippetsWithPreviews = storedSnippets.map((snippet) => ({
+    ...snippet,
+    // Only use preview if it exists, otherwise keep the original image path
+    image: imagePreviews[snippet.id] || snippet.image,
+  }));
+
+  return snippetsWithPreviews;
 };
 
 // Update an existing snippet in storage
-export const updateSnippetInStorage = (updatedSnippet: DevSnippet): DevSnippet[] => {
+export const updateSnippetInStorage = (
+  updatedSnippet: DevSnippet
+): DevSnippet[] => {
   const existingSnippets = getSnippetsFromStorage();
-  const updatedSnippets = existingSnippets.map(snippet => 
+  const updatedSnippets = existingSnippets.map((snippet) =>
     snippet.id === updatedSnippet.id ? updatedSnippet : snippet
   );
   saveSnippetsToStorage(updatedSnippets);
@@ -68,7 +133,23 @@ export const updateSnippetInStorage = (updatedSnippet: DevSnippet): DevSnippet[]
 // Delete a snippet from storage
 export const deleteSnippetFromStorage = (snippetId: string): DevSnippet[] => {
   const existingSnippets = getSnippetsFromStorage();
-  const updatedSnippets = existingSnippets.filter(snippet => snippet.id !== snippetId);
+  const updatedSnippets = existingSnippets.filter(
+    (snippet) => snippet.id !== snippetId
+  );
   saveSnippetsToStorage(updatedSnippets);
   return updatedSnippets;
+};
+
+// Clear all snippets from localStorage
+export const clearSnippetsFromStorage = (): void => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(`${STORAGE_KEY}-previews`);
+  } catch (error) {
+    console.error("Error clearing snippets from localStorage:", error);
+  }
 };
