@@ -2,37 +2,97 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { devSnippets, DevSnippet } from "../../data/devSnippets";
+import { getAllSnippets, addSnippetToStorage, updateSnippetInStorage, deleteSnippetFromStorage } from "../../data/snippetStorage";
+import SearchBar from "./components/SearchBar";
+import CategoryFilter from "./components/CategoryFilter";
+import SnippetCard from "./components/SnippetCard";
+import GrebbaryFormModal from "./components/GrebbaryFormModal";
 
 export default function DeveloperPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editingSnippet, setEditingSnippet] = useState<DevSnippet | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [snippets, setSnippets] = useState<DevSnippet[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Save developer role to localStorage
     localStorage.setItem("grebbary-role", "developer");
+    
+    // Load snippets from localStorage (with fallback to default data)
+    const loadSnippets = () => {
+      const loadedSnippets = getAllSnippets(devSnippets);
+      setSnippets(loadedSnippets);
+      setIsLoading(false);
+    };
+    
+    // Use setTimeout to avoid synchronous setState in effect
+    const timeoutId = setTimeout(loadSnippets, 0);
+    
+    return () => clearTimeout(timeoutId);
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement search functionality
+    // Search functionality is now handled by the filteredSnippets logic
     console.log("Searching for:", searchQuery);
   };
 
+  const handleSnippetAdded = (newSnippet: DevSnippet) => {
+    // Save to localStorage and update state
+    const updatedSnippets = addSnippetToStorage(newSnippet);
+    setSnippets(updatedSnippets);
+  };
+
+  const handleSnippetUpdated = (updatedSnippet: DevSnippet) => {
+    // Update snippet in localStorage and update state
+    const updatedSnippets = updateSnippetInStorage(updatedSnippet);
+    setSnippets(updatedSnippets);
+    setShowEditForm(false);
+    setEditingSnippet(null);
+  };
+
+  const handleEditSnippet = (snippet: DevSnippet) => {
+    setEditingSnippet(snippet);
+    setShowEditForm(true);
+  };
+
+  const handleDeleteSnippet = (snippet: DevSnippet) => {
+    if (confirm(`Are you sure you want to delete "${snippet.projectName}"?`)) {
+      // Delete snippet from localStorage and update state
+      const updatedSnippets = deleteSnippetFromStorage(snippet.id);
+      setSnippets(updatedSnippets);
+    }
+  };
+
+  // Filter snippets based on selected category and search query
+  const filteredSnippets = snippets.filter(snippet => {
+    const matchesCategory = !selectedCategory || snippet.category === selectedCategory;
+    const matchesSearch = !searchQuery || 
+      snippet.projectName.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
+      <header className="bg-white border-b border-zinc-200">
         <div className="max-w-6xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => router.push("/")}
-                className="text-2xl font-bold text-black dark:text-zinc-50 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors"
+                className="text-2xl font-bold text-black hover:text-zinc-600 transition-colors"
               >
-                Grebarry
+                Grebbary
               </button>
-              <div className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full">
-                <span className="text-sm text-zinc-600 dark:text-zinc-400">
+              <div className="flex items-center gap-2 px-3 py-1 bg-zinc-100 rounded-full">
+                <span className="text-sm text-zinc-600">
                   💻 Developer
                 </span>
               </div>
@@ -42,7 +102,7 @@ export default function DeveloperPage() {
                 localStorage.removeItem("grebbary-role");
                 router.push("/");
               }}
-              className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors"
+              className="text-sm text-black border border-black bg-white hover:bg-black hover:text-white transition-colors px-3 py-1 rounded"
             >
               Change Role
             </button>
@@ -53,95 +113,84 @@ export default function DeveloperPage() {
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Search Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-black dark:text-zinc-50 mb-2">
-            Developer Snippets
-          </h1>
-          <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-            Search and explore code snippets from the Grebban team.
-          </p>
-
-          <form onSubmit={handleSearch} className="flex gap-4">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search code snippets..."
-                className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-black dark:text-zinc-50 placeholder-zinc-500 dark:placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:focus:ring-zinc-400"
-              />
-            </div>
-            <button
-              type="submit"
-              className="px-6 py-3 bg-black dark:bg-zinc-50 text-white dark:text-black rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors font-medium"
-            >
-              Search
-            </button>
-          </form>
-        </div>
+        <SearchBar 
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          onSearch={handleSearch}
+        />
 
         {/* Categories/Filter Section */}
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-black dark:text-zinc-50 mb-4">
-            Categories
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            <button className="px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-              React Components
-            </button>
-            <button className="px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-              Animations
-            </button>
-            <button className="px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-              Utilities
-            </button>
-            <button className="px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-              Hooks
-            </button>
-          </div>
+        <CategoryFilter 
+          selectedCategory={selectedCategory}
+          setSelectedCategory={setSelectedCategory}
+        />
+
+        {/* Create Snippet Button */}
+        <div className="mb-8 mt-12">
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="px-6 py-3 bg-white text-black border border-black rounded-lg hover:bg-black hover:text-white transition-colors font-medium"
+          >
+            + Add to Grebbary
+          </button>
         </div>
 
         {/* Snippets Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Placeholder snippets */}
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div
-              key={index}
-              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-6 hover:shadow-lg transition-shadow"
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center">
-                  <span className="text-sm">💻</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-black dark:text-zinc-50">
-                    Sample Component {index + 1}
-                  </h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    by @username
-                  </p>
-                </div>
-              </div>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
-                A sample code snippet for demonstration purposes.
-              </p>
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                  <span className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-600 dark:text-zinc-400 rounded">
-                    React
-                  </span>
-                  <span className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-600 dark:text-zinc-400 rounded">
-                    Tailwind
-                  </span>
-                </div>
-                <button className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors">
-                  View →
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="text-center py-12">
+            <div className="text-4xl mb-4">⏳</div>
+            <h3 className="text-lg font-semibold text-black mb-2">
+              Loading snippets...
+            </h3>
+          </div>
+        ) : filteredSnippets.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-4xl mb-4">🔍</div>
+            <h3 className="text-lg font-semibold text-black mb-2">
+              No snippets found
+            </h3>
+            <p className="text-zinc-600">
+              {searchQuery && selectedCategory 
+                ? `No snippets found matching "${searchQuery}" in the "${selectedCategory}" category.`
+                : searchQuery 
+                ? `No snippets found matching "${searchQuery}".`
+                : selectedCategory 
+                ? `No snippets found in the "${selectedCategory}" category.`
+                : "No snippets available."
+              }
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredSnippets.map((snippet) => (
+              <SnippetCard 
+                key={snippet.id} 
+                snippet={snippet}
+                onEdit={handleEditSnippet}
+                onDelete={handleDeleteSnippet}
+              />
+            ))}
+          </div>
+        )}
       </main>
+
+      {/* Create Snippet Modal */}
+      <GrebbaryFormModal 
+        isOpen={showCreateForm}
+        onClose={() => setShowCreateForm(false)}
+        onSnippetAdded={handleSnippetAdded}
+      />
+
+      {/* Edit Snippet Modal */}
+      <GrebbaryFormModal 
+        isOpen={showEditForm}
+        onClose={() => {
+          setShowEditForm(false);
+          setEditingSnippet(null);
+        }}
+        onSnippetUpdated={handleSnippetUpdated}
+        editSnippet={editingSnippet}
+      />
     </div>
   );
 }
