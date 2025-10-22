@@ -91,11 +91,6 @@ export default function GrebbaryFormModal({ isOpen, onClose, onSnippetAdded, onS
         return;
       }
       
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Image size must be less than 5MB');
-        return;
-      }
       
       setImage(file);
       
