@@ -123,8 +123,13 @@ export default function GrebbaryFormModal({ isOpen, onClose, onSnippetAdded, onS
       const finalCategory = showNewCategoryInput ? newCategory.trim() : selectedCategory;
       const finalFramework = showNewFrameworkInput ? newFramework.trim() : selectedFramework;
 
-      if (!finalCategory || !finalFramework) {
-        alert('Please select or create a category and framework');
+      if (!finalCategory) {
+        alert('Please select or create a category');
+        return;
+      }
+
+      if (!finalFramework) {
+        alert('Please select or create a framework');
         return;
       }
 
@@ -288,7 +293,6 @@ export default function GrebbaryFormModal({ isOpen, onClose, onSnippetAdded, onS
               className="w-full px-2 py-1.5 border border-zinc-300 rounded-lg bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               value={selectedFramework}
               onChange={(e) => handleFrameworkChange(e.target.value)}
-              required
             >
               <option value="">Select a framework</option>
               {existingFrameworks.map((framework) => (
@@ -317,7 +321,6 @@ export default function GrebbaryFormModal({ isOpen, onClose, onSnippetAdded, onS
               className="w-full px-2 py-1.5 border border-zinc-300 rounded-lg bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               value={selectedCategory}
               onChange={(e) => handleCategoryChange(e.target.value)}
-              required
             >
               <option value="">Select a category</option>
               {existingCategories.map((category) => (
