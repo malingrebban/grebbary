@@ -18,6 +18,7 @@ export default function DeveloperPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [snippets, setSnippets] = useState<DevSnippet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     // Save developer role to localStorage
@@ -77,6 +78,15 @@ export default function DeveloperPage() {
     return matchesCategory && matchesSearch;
   });
 
+  // Sort filtered snippets A-Z by project name
+  const sortedSnippets = [...filteredSnippets].sort((a, b) => {
+    const nameA = a.projectName.toLowerCase();
+    const nameB = b.projectName.toLowerCase();
+    return sortOrder === 'asc' 
+      ? nameA.localeCompare(nameB)
+      : nameB.localeCompare(nameA);
+  });
+
 
   return (
     <div className="min-h-screen bg-white">
@@ -125,13 +135,22 @@ export default function DeveloperPage() {
           setSelectedCategory={setSelectedCategory}
         />
 
-        {/* Create Snippet Button */}
-        <div className="mb-8 mt-12">
+        {/* Create Snippet Button and Sort Button */}
+        <div className="mb-8 mt-12 flex items-center justify-between">
           <button
             onClick={() => setShowCreateForm(true)}
             className="px-6 py-3 bg-white text-black border border-black rounded-lg hover:bg-black hover:text-white transition-colors font-medium"
           >
             + Add to Grebbary
+          </button>
+          <button
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            className="px-6 py-3 bg-white text-black border border-black rounded-lg hover:bg-black hover:text-white transition-colors font-medium flex items-center gap-2"
+          >
+            <span>{sortOrder === 'asc' ? 'A-Z' : 'Z-A'}</span>
+            <span className="text-sm">
+              {sortOrder === 'asc' ? '↑' : '↓'}
+            </span>
           </button>
         </div>
 
@@ -143,7 +162,7 @@ export default function DeveloperPage() {
               Loading snippets...
             </h3>
           </div>
-        ) : filteredSnippets.length === 0 ? (
+        ) : sortedSnippets.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-4xl mb-4">🔍</div>
             <h3 className="text-lg font-semibold text-black mb-2">
@@ -162,7 +181,7 @@ export default function DeveloperPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredSnippets.map((snippet) => (
+            {sortedSnippets.map((snippet) => (
               <SnippetCard 
                 key={snippet.id} 
                 snippet={snippet}
