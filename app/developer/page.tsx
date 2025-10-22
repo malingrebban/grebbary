@@ -191,6 +191,17 @@ export default function DeveloperPage() {
         onSnippetUpdated={handleSnippetUpdated}
         editSnippet={editingSnippet}
       />
+
+      {/* Footer */}
+      <footer className="bg-zinc-50 border-t border-zinc-200 mt-12">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="text-center">
+            <p className="text-sm text-zinc-600">
+              © 2025 Grebbary. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
